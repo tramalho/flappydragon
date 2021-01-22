@@ -9,14 +9,24 @@
 import SpriteKit
 import GameplayKit
 
+private enum GameStatus {
+    case starting
+    case running
+    case finishied
+}
+
 class GameScene: SKScene {
     
     private var floor : SKSpriteNode!
     private var intro : SKSpriteNode!
     private var player : SKSpriteNode!
+    private var labelScore : SKLabelNode!
     
     private let gameArea: CGFloat = 410.0
     private let velocity = 100.0
+    private let flyForce = 30
+    private var score = 0
+    private var gameStatus: GameStatus = .starting
     
     override func didMove(to view: SKView) {
         addBackground()
@@ -27,11 +37,20 @@ class GameScene: SKScene {
     }
     
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-
+        switch gameStatus {
+            case .starting:
+                startingState()
+            case .running:
+                runningState()
+            case .finishied:
+                print("finishied")
+        }
     }
 
     override func update(_ currentTime: TimeInterval) {
-        // Called before each frame is rendered
+        if gameStatus == .running {
+            updateRotation()
+        }
     }
     
     private func addBackground() {
@@ -62,7 +81,7 @@ class GameScene: SKScene {
     
     private func addPlayer() {
         
-        let position = CGPoint(x: 60, y: self.size.height - gameArea / 2)
+        let position = CGPoint(x: 80, y: self.size.height - gameArea / 2)
         
         player = createImageNode(zPosition: 4, imageName: "player1", position: position)
         
@@ -92,6 +111,21 @@ class GameScene: SKScene {
         floor.run(repeatAction)
     }
     
+    private func addScore() {
+        
+        labelScore = SKLabelNode(fontNamed: "Chalkduster")
+        
+        labelScore.text = "Score:\(score)"
+        labelScore.fontSize = 30
+        labelScore.alpha = 0.8
+        labelScore.zPosition = 5
+        let position = CGPoint(x: self.size.width - (labelScore.frame.width), y: self.size.height - 70)
+        
+        labelScore.position = position
+        
+        addChild(labelScore!)
+    }
+    
     private func createImageNode(zPosition: Int, imageName: String, position: CGPoint) -> SKSpriteNode {
         
         let skSpriteNode = SKSpriteNode(imageNamed: imageName)
@@ -102,5 +136,36 @@ class GameScene: SKScene {
         addChild(skSpriteNode)
         
         return skSpriteNode
+    }
+    
+    private func startingState() {
+        intro.removeFromParent()
+        addScore()
+        initPlayer()
+        gameStatus = .running
+    }
+    
+    private func runningState() {
+        applyGravityForce()
+        gameStatus = .running
+    }
+    
+    private func initPlayer() {
+        
+        player?.physicsBody = SKPhysicsBody(circleOfRadius: player.size.width/2 - 10)
+        player?.physicsBody?.isDynamic = true
+        player?.physicsBody?.allowsRotation = true
+        applyGravityForce()
+    }
+    
+    private func applyGravityForce() {
+        player?.physicsBody?.velocity = CGVector.zero
+        player?.physicsBody?.applyImpulse(CGVector(dx: 0, dy: flyForce))
+    }
+    
+    private func updateRotation() {
+        if let velocity = player?.physicsBody?.velocity {
+            player.zRotation = velocity.dy * 0.001
+        }
     }
 }
