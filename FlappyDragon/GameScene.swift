@@ -57,19 +57,25 @@ class GameScene: SKScene {
         
         let position = CGPoint(x: self.size.width / 2, y: self.size.height / 2)
         
-        _ = createImageNode(zPosition: 0, imageName: "background", position: position)
+        let node = createImageNode(zPosition: 0, imageName: "background", position: position)
+        
+        addChild(node)
     }
     
     private func addFloor() {
         
-        floor = SKSpriteNode(imageNamed: "floor")
-        
-        let position = CGPoint(x: floor.size.width / 2, y: self.size.height - gameArea - floor.size.height / 2)
-        
-        floor.zPosition = 2
-        floor.position = position
+        floor = createImageNode(zPosition: 2, imageName: "floor")
+        floor.position = CGPoint(x: floor.size.width / 2, y: self.size.height - gameArea - floor.size.height / 2)
         
         addChild(floor!)
+        
+        let invisibleFloor = createRigidBody(position: CGPoint(x: self.size.width/2, y: self.size.height - gameArea))
+        
+        addChild(invisibleFloor)
+        
+        let invisibleRoof = createRigidBody(position: CGPoint(x: self.size.width/2, y: self.size.height))
+        
+        addChild(invisibleRoof)
     }
     
     private func addIntro() {
@@ -77,6 +83,8 @@ class GameScene: SKScene {
         let position = CGPoint(x: self.size.width / 2, y:  self.size.height - 210)
         
         intro = createImageNode(zPosition: 3, imageName: "intro", position: position)
+        
+        addChild(intro)
     }
     
     private func addPlayer() {
@@ -84,6 +92,8 @@ class GameScene: SKScene {
         let position = CGPoint(x: 80, y: self.size.height - gameArea / 2)
         
         player = createImageNode(zPosition: 4, imageName: "player1", position: position)
+        
+        addChild(player)
         
         var textures: [SKTexture] = []
         
@@ -126,14 +136,15 @@ class GameScene: SKScene {
         addChild(labelScore!)
     }
     
-    private func createImageNode(zPosition: Int, imageName: String, position: CGPoint) -> SKSpriteNode {
+    private func createImageNode(zPosition: Int, imageName: String, position: CGPoint? = nil) -> SKSpriteNode {
         
         let skSpriteNode = SKSpriteNode(imageNamed: imageName)
         
         skSpriteNode.zPosition = CGFloat(zPosition)
-        skSpriteNode.position = position
         
-        addChild(skSpriteNode)
+        if let position = position {
+            skSpriteNode.position = position
+        }
         
         return skSpriteNode
     }
@@ -142,6 +153,9 @@ class GameScene: SKScene {
         intro.removeFromParent()
         addScore()
         initPlayer()
+        Timer.scheduledTimer(withTimeInterval: 2.5, repeats: true) { (Timer) in
+            self.spawnEnemies()
+        }
         gameStatus = .running
     }
     
@@ -167,5 +181,58 @@ class GameScene: SKScene {
         if let velocity = player?.physicsBody?.velocity {
             player.zRotation = velocity.dy * 0.001
         }
+    }
+    
+    private func createRigidBody(position: CGPoint) -> SKNode {
+    
+        let node = SKNode()
+        
+        let invisibleSize = CGSize(width: self.size.width, height: 1)
+        
+        node.physicsBody = SKPhysicsBody(rectangleOf: invisibleSize)
+        node.physicsBody?.isDynamic = false
+        node.zPosition = 2
+        node.position = position
+        
+        return node
+    }
+    
+    private func spawnEnemies() {
+        
+        let initialPosition = CGFloat(arc4random_uniform(132) + 74)
+        let enemyNumber = Int(arc4random_uniform(4) + 1)
+        let enemyDistance = self.player.size.height * 2.5
+        
+        let enemyTop = createEnemy(imageName: "enemytop\(enemyNumber)")
+        let enemyBottom = createEnemy(imageName: "enemybottom\(enemyNumber)")
+        
+        let enemyWidth: CGFloat = self.size.width + enemyTop.size.width / 2
+        
+        enemyTop.position = CGPoint(x: enemyWidth, y: self.size.height - initialPosition + enemyTop.size.height/2)
+        enemyBottom.position = CGPoint(x: enemyWidth, y: enemyTop.position.y - enemyTop.size.height - enemyDistance)
+
+        let distance = self.size.width + enemyTop.size.width
+        let duration = Double(distance) / velocity
+        
+        let moveAction = SKAction.moveBy(x: -distance, y: 0, duration: duration)
+        let removeAction = SKAction.removeFromParent()
+        let sequece = SKAction.sequence([moveAction, removeAction])
+        
+        enemyTop.run(sequece)
+        enemyBottom.run(sequece)
+        
+        addChild(enemyTop)
+        addChild(enemyBottom)
+    }
+    
+    private func createEnemy(imageName: String) -> SKSpriteNode {
+        
+        let enemy = createImageNode(zPosition: 1, imageName: imageName)
+        
+        enemy.physicsBody = SKPhysicsBody(rectangleOf: enemy.size)
+        enemy.physicsBody?.isDynamic = false
+        
+        return enemy
+        
     }
 }
