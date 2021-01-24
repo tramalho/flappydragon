@@ -28,7 +28,14 @@ class GameScene: SKScene {
     private var score = 0
     private var gameStatus: GameStatus = .starting
     
+    private var playerCategory: UInt32 = 1
+    private var enemyCategory: UInt32 = 2
+    private var scoreCategory: UInt32 = 4
+    
     override func didMove(to view: SKView) {
+        
+        physicsWorld.contactDelegate = self
+        
         addBackground()
         addFloor()
         addIntro()
@@ -70,6 +77,8 @@ class GameScene: SKScene {
         addChild(floor!)
         
         let invisibleFloor = createRigidBody(position: CGPoint(x: self.size.width/2, y: self.size.height - gameArea))
+        invisibleFloor.physicsBody?.contactTestBitMask = playerCategory
+        invisibleFloor.physicsBody?.categoryBitMask = enemyCategory
         
         addChild(invisibleFloor)
         
@@ -169,6 +178,8 @@ class GameScene: SKScene {
         player?.physicsBody = SKPhysicsBody(circleOfRadius: player.size.width/2 - 10)
         player?.physicsBody?.isDynamic = true
         player?.physicsBody?.allowsRotation = true
+        player.physicsBody?.collisionBitMask = enemyCategory
+        player.physicsBody?.contactTestBitMask = scoreCategory
         applyGravityForce()
     }
     
@@ -184,15 +195,22 @@ class GameScene: SKScene {
     }
     
     private func createRigidBody(position: CGPoint) -> SKNode {
-    
-        let node = SKNode()
         
         let invisibleSize = CGSize(width: self.size.width, height: 1)
         
-        node.physicsBody = SKPhysicsBody(rectangleOf: invisibleSize)
+        let node = createNode(size: invisibleSize)
+        node.position = position
+
+        return node
+    }
+    
+    private func createNode(size: CGSize) -> SKNode {
+        
+        let node = SKNode()
+        
+        node.physicsBody = SKPhysicsBody(rectangleOf: size)
         node.physicsBody?.isDynamic = false
         node.zPosition = 2
-        node.position = position
         
         return node
     }
@@ -205,11 +223,15 @@ class GameScene: SKScene {
         
         let enemyTop = createEnemy(imageName: "enemytop\(enemyNumber)")
         let enemyBottom = createEnemy(imageName: "enemybottom\(enemyNumber)")
+        let laser = createNode(size: CGSize(width: 1, height: enemyDistance))
+        laser.physicsBody?.categoryBitMask = scoreCategory
         
         let enemyWidth: CGFloat = self.size.width + enemyTop.size.width / 2
         
         enemyTop.position = CGPoint(x: enemyWidth, y: self.size.height - initialPosition + enemyTop.size.height/2)
         enemyBottom.position = CGPoint(x: enemyWidth, y: enemyTop.position.y - enemyTop.size.height - enemyDistance)
+        
+        laser.position = CGPoint(x: enemyTop.position.x + enemyTop.size.width / 2, y: enemyTop.position.y - enemyTop.size.height / 2 - enemyDistance / 2)
 
         let distance = self.size.width + enemyTop.size.width
         let duration = Double(distance) / velocity
@@ -220,9 +242,11 @@ class GameScene: SKScene {
         
         enemyTop.run(sequece)
         enemyBottom.run(sequece)
+        laser.run(sequece)
         
         addChild(enemyTop)
         addChild(enemyBottom)
+        addChild(laser)
     }
     
     private func createEnemy(imageName: String) -> SKSpriteNode {
@@ -231,8 +255,30 @@ class GameScene: SKScene {
         
         enemy.physicsBody = SKPhysicsBody(rectangleOf: enemy.size)
         enemy.physicsBody?.isDynamic = false
+        enemy.physicsBody?.contactTestBitMask = playerCategory
+        enemy.physicsBody?.categoryBitMask = enemyCategory
         
         return enemy
+        
+    }
+}
+
+extension GameScene: SKPhysicsContactDelegate {
+    
+    func didBegin(_ contact: SKPhysicsContact) {
+        
+        let categoriesBitmask:[UInt32] = [contact.bodyA.categoryBitMask, contact.bodyB.categoryBitMask]
+        
+        if gameStatus == .running {
+            
+            if categoriesBitmask.contains(scoreCategory) {
+                score += 1
+                labelScore.text = "Score:\(score)"
+                
+            } else if categoriesBitmask.contains(enemyCategory) {
+                print("enemy collision")
+            }
+        }
         
     }
 }
