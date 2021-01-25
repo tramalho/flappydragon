@@ -10,6 +10,7 @@ import SpriteKit
 import GameplayKit
 
 private enum GameStatus {
+    case reset
     case starting
     case running
     case finishied
@@ -31,26 +32,26 @@ class GameScene: SKScene {
     private var playerCategory: UInt32 = 1
     private var enemyCategory: UInt32 = 2
     private var scoreCategory: UInt32 = 4
+    private var spawntimer: Timer?
+    
+    private let scoreSound = SKAction.playSoundFileNamed("score.mp3", waitForCompletion: true)
+    private let gameOverSound = SKAction.playSoundFileNamed("hit.mp3", waitForCompletion: true)
     
     override func didMove(to view: SKView) {
-        
         physicsWorld.contactDelegate = self
-        
-        addBackground()
-        addFloor()
-        addIntro()
-        addPlayer()
-        addMoveFloor()
+        resetState()
     }
     
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         switch gameStatus {
+            case .reset:
+                resetState()
             case .starting:
                 startingState()
             case .running:
                 runningState()
             case .finishied:
-                print("finishied")
+                break
         }
     }
 
@@ -130,19 +131,26 @@ class GameScene: SKScene {
         floor.run(repeatAction)
     }
     
+    fileprivate func createLabel() -> SKLabelNode {
+        let label = SKLabelNode(fontNamed: "Chalkduster")
+        
+        label.fontSize = 30
+        label.alpha = 0.8
+        label.zPosition = 5
+        
+        return label
+    }
+    
     private func addScore() {
         
-        labelScore = SKLabelNode(fontNamed: "Chalkduster")
-        
+        labelScore = createLabel()
         labelScore.text = "Score:\(score)"
-        labelScore.fontSize = 30
-        labelScore.alpha = 0.8
-        labelScore.zPosition = 5
+
         let position = CGPoint(x: self.size.width - (labelScore.frame.width), y: self.size.height - 70)
         
         labelScore.position = position
         
-        addChild(labelScore!)
+        addChild(labelScore)
     }
     
     private func createImageNode(zPosition: Int, imageName: String, position: CGPoint? = nil) -> SKSpriteNode {
@@ -158,11 +166,22 @@ class GameScene: SKScene {
         return skSpriteNode
     }
     
+    private func resetState() {
+        score = 0
+        self.removeAllChildren()
+        addBackground()
+        addFloor()
+        addIntro()
+        addPlayer()
+        addMoveFloor()
+        gameStatus = .starting
+    }
+    
     private func startingState() {
         intro.removeFromParent()
         addScore()
         initPlayer()
-        Timer.scheduledTimer(withTimeInterval: 2.5, repeats: true) { (Timer) in
+        spawntimer = Timer.scheduledTimer(withTimeInterval: 2.5, repeats: true) { (Timer) in
             self.spawnEnemies()
         }
         gameStatus = .running
@@ -171,6 +190,35 @@ class GameScene: SKScene {
     private func runningState() {
         applyGravityForce()
         gameStatus = .running
+    }
+    
+    private func gameOverState() {
+        run(gameOverSound)
+        gameStatus = .finishied
+        spawntimer?.invalidate()
+        
+        player.texture = SKTexture(imageNamed: "playerDead")
+        player.physicsBody?.isDynamic = false
+        
+        for node in self.children {
+            node.removeAllActions()
+        }
+
+        Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { (Timer) in
+            let label = self.createLabel()
+            label.text = "Game Over!"
+            label.fontColor = .red
+            label.position = CGPoint(x: self.size.width / 2, y: self.size.height / 2)
+            self.addChild(label)
+            self.gameStatus = .reset
+        }
+        
+    }
+    
+    private func scoreAction() {
+        score += 1
+        labelScore.text = "Score:\(score)"
+        run(scoreSound)
     }
     
     private func initPlayer() {
@@ -219,7 +267,7 @@ class GameScene: SKScene {
         
         let initialPosition = CGFloat(arc4random_uniform(132) + 74)
         let enemyNumber = Int(arc4random_uniform(4) + 1)
-        let enemyDistance = self.player.size.height * 2.5
+        let enemyDistance = self.player.size.height * 3
         
         let enemyTop = createEnemy(imageName: "enemytop\(enemyNumber)")
         let enemyBottom = createEnemy(imageName: "enemybottom\(enemyNumber)")
@@ -272,11 +320,9 @@ extension GameScene: SKPhysicsContactDelegate {
         if gameStatus == .running {
             
             if categoriesBitmask.contains(scoreCategory) {
-                score += 1
-                labelScore.text = "Score:\(score)"
-                
+                scoreAction()
             } else if categoriesBitmask.contains(enemyCategory) {
-                print("enemy collision")
+                gameOverState()
             }
         }
         

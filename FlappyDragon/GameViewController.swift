@@ -9,10 +9,12 @@
 import UIKit
 import SpriteKit
 import GameplayKit
+import AVFoundation
 
 class GameViewController: UIViewController {
 
     private var stage: SKView?
+    private var audioPlayer: AVAudioPlayer?
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -21,6 +23,7 @@ class GameViewController: UIViewController {
             stage = view
             stage?.ignoresSiblingOrder = true
             presentScene()
+            playMusic()
         }
     }
 
@@ -28,6 +31,18 @@ class GameViewController: UIViewController {
         let scene = GameScene(size: CGSize(width: 320, height: 568))
         scene.scaleMode = .aspectFill
         stage?.presentScene(scene)
+    }
+    
+    private func playMusic() {
+        
+        if let music = Bundle.main.url(forResource: "music", withExtension: "m4a") {
+            
+            audioPlayer = try! AVAudioPlayer(contentsOf: music)
+            audioPlayer?.numberOfLoops = -1
+            audioPlayer?.volume = 0.05
+            audioPlayer?.prepareToPlay()
+            audioPlayer?.play()
+        }
     }
     
     override var prefersStatusBarHidden: Bool {
