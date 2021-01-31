@@ -90,7 +90,7 @@ class GameScene: SKScene {
     
     private func addIntro() {
         
-        let position = CGPoint(x: self.size.width / 2, y:  self.size.height - 210)
+        let position = CGPoint(x: self.size.width / 2, y:  self.size.height - 250)
         
         intro = createImageNode(zPosition: 3, imageName: "intro", position: position)
         
@@ -146,7 +146,7 @@ class GameScene: SKScene {
         labelScore = createLabel()
         labelScore.text = "Score:\(score)"
 
-        let position = CGPoint(x: self.size.width - (labelScore.frame.width), y: self.size.height - 70)
+        let position = CGPoint(x: self.size.width - (labelScore.frame.width), y: self.size.height - 120)
         
         labelScore.position = position
         
@@ -181,9 +181,9 @@ class GameScene: SKScene {
         intro.removeFromParent()
         addScore()
         initPlayer()
-        spawntimer = Timer.scheduledTimer(withTimeInterval: 2.5, repeats: true) { (Timer) in
-            self.spawnEnemies()
-        }
+        
+        spawntimer = Timer.scheduledTimer(timeInterval: 2.5, target: self, selector: #selector(spawnEnemies), userInfo: nil, repeats: true)
+        
         gameStatus = .running
     }
     
@@ -203,16 +203,17 @@ class GameScene: SKScene {
         for node in self.children {
             node.removeAllActions()
         }
-
-        Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { (Timer) in
-            let label = self.createLabel()
-            label.text = "Game Over!"
-            label.fontColor = .red
-            label.position = CGPoint(x: self.size.width / 2, y: self.size.height / 2)
-            self.addChild(label)
-            self.gameStatus = .reset
-        }
         
+        Timer.scheduledTimer(timeInterval: 0.5, target: self, selector: #selector(gameOver), userInfo: nil, repeats: false)
+    }
+    
+    @objc fileprivate func gameOver() {
+        let label = self.createLabel()
+        label.text = "Game Over!"
+        label.fontColor = .red
+        label.position = CGPoint(x: self.size.width / 2, y: self.size.height / 2)
+        self.addChild(label)
+        self.gameStatus = .reset
     }
     
     private func scoreAction() {
@@ -263,7 +264,7 @@ class GameScene: SKScene {
         return node
     }
     
-    private func spawnEnemies() {
+    @objc private func spawnEnemies() {
         
         let initialPosition = CGFloat(arc4random_uniform(132) + 74)
         let enemyNumber = Int(arc4random_uniform(4) + 1)
